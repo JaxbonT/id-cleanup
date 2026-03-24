@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Exposure Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-primary:#0a0a0f;--bg-secondary:#12121a;--bg-tertiary:#1a1a26;--bg-hover:#22222e;
+  --border:#2a2a3a;--border-light:#3a3a4a;
+  --text-primary:#e8e8f0;--text-secondary:#9898a8;--text-muted:#68687a;
+  --accent:#4ade80;--accent-dim:#166534;
+  --danger:#ef4444;--danger-dim:#7f1d1d;
+  --warning:#f59e0b;--warning-dim:#78350f;
+  --info:#3b82f6;--info-dim:#1e3a5f;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.5}
+.app{min-height:100vh;max-width:1400px;margin:0 auto;padding:20px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 24px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.header-left h1{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;letter-spacing:-0.5px}
+.header-left p{font-size:13px;color:var(--text-muted);margin-top:4px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-light)}
+.btn-accent{background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)}
+.btn-accent:hover{background:#1a7a3a}
+.btn-danger{background:var(--danger-dim);color:var(--danger);border-color:var(--danger-dim)}
+.btn-danger:hover{background:#991b1b}
+.btn-sm{padding:4px 10px;font-size:11px}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:16px}
+.stat-card .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;font-family:'JetBrains Mono',monospace}
+.stat-card .value{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:4px}
+.stat-card .sub{font-size:11px;color:var(--text-muted);margin-top:2px}
+.progress-wrap{margin-bottom:24px}
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.progress-meta span:last-child{font-family:'JetBrains Mono',monospace}
+.progress-bg{height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto}
+.tab{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:10px 18px;border:none;background:none;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text-secondary)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-badge{display:inline-block;background:var(--danger-dim);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);min-width:200px;flex:1;max-width:300px}
+.search-input::placeholder{color:var(--text-muted)}
+.search-input:focus{outline:none;border-color:var(--accent)}
+select{font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer}
+select:focus{outline:none;border-color:var(--accent)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--bg-secondary)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg-hover)}
+td{padding:10px 14px;vertical-align:top}
+.site-name{font-weight:600}
+.site-name a{color:var(--text-primary);text-decoration:none;border-bottom:1px dotted var(--text-muted)}
+.site-name a:hover{color:var(--accent);border-color:var(--accent)}
+.cat-tag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--bg-tertiary);color:var(--text-muted);display:inline-block;margin-top:2px}
+.difficulty-tag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;display:inline-block}
+.diff-easy{background:#052e16;color:#4ade80}
+.diff-medium{background:var(--warning-dim);color:var(--warning)}
+.diff-hard{background:var(--danger-dim);color:var(--danger)}
+.status-select{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;width:100%;min-width:140px}
+.exposure-tags{display:flex;flex-wrap:wrap;gap:3px;max-width:180px}
+.exposure-tag{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg-tertiary);color:var(--text-muted);cursor:pointer;border:1px solid transparent;transition:all .1s;user-select:none}
+.exposure-tag.active{background:var(--danger-dim);color:var(--danger);border-color:#991b1b}
+.exposure-tag:hover{border-color:var(--border-light)}
+.note-cell{max-width:200px}
+.note-default{font-size:11px;color:var(--text-muted);font-style:italic}
+.note-input{font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-primary);width:100%;resize:vertical;min-height:30px}
+.note-input:focus{outline:none;border-color:var(--accent)}
+.date-cell{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap}
+.recheck-overdue{color:var(--danger);font-weight:600}
+.log-list{display:flex;flex-direction:column;gap:8px}
+.log-entry{background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px}
+.log-entry .log-text{color:var(--text-secondary);flex:1}
+.log-entry .log-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto}
+.modal h3{font-family:'JetBrains Mono',monospace;font-size:16px;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.form-group input,.form-group select,.form-group textarea{font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-primary);width:100%}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.checklist-section{margin-bottom:24px}
+.checklist-section h3{font-family:'JetBrains Mono',monospace;font-size:14px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.checklist-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.checklist-item:last-child{border-bottom:none}
+.check-box{width:18px;height:18px;border:2px solid var(--border-light);border-radius:4px;cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;background:var(--bg-tertiary);font-size:12px;user-select:none}
+.check-box.checked{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.checklist-text{font-size:13px;color:var(--text-secondary)}
+.checklist-text.done{text-decoration:line-through;color:var(--text-muted)}
+.export-section{background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:20px;margin-top:24px}
+.export-section h3{font-family:'JetBrains Mono',monospace;font-size:14px;margin-bottom:12px}
+.export-section p{font-size:13px;color:var(--text-muted);margin-bottom:12px}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:14px}
+.hidden{display:none}
+@media(max-width:768px){
+  .app{padding:12px}
+  .header{flex-direction:column;align-items:flex-start}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .filters{flex-direction:column}
+  .search-input{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = "exposure-tracker-v2";
+
+const DATA_BROKERS = [
+  {name:"Spokeo",url:"https://www.spokeo.com/optout",category:"People Search",difficulty:"Easy",notes:"Email verification required. Takes 24-48hrs."},
+  {name:"BeenVerified",url:"https://www.beenverified.com/app/optout/search",category:"People Search",difficulty:"Easy",notes:"Search your name, select profile, confirm via email."},
+  {name:"Whitepages",url:"https://www.whitepages.com/suppression-requests",category:"People Search",difficulty:"Medium",notes:"Phone verification required."},
+  {name:"Intelius",url:"https://www.intelius.com/opt-out",category:"People Search",difficulty:"Medium",notes:"Must find your exact listing first."},
+  {name:"TruePeopleSearch",url:"https://www.truepeoplesearch.com/removal",category:"People Search",difficulty:"Easy",notes:"Instant removal. Check back monthly — they re-list."},
+  {name:"FastPeopleSearch",url:"https://www.fastpeoplesearch.com/removal",category:"People Search",difficulty:"Easy",notes:"Instant removal after finding your listing."},
+  {name:"ThatsThem",url:"https://thatsthem.com/optout",category:"People Search",difficulty:"Easy",notes:"Simple form. Takes a few days."},
+  {name:"Radaris",url:"https://radaris.com/page/how-to-remove",category:"People Search",difficulty:"Hard",notes:"Requires account creation. Persistent re-listing."},
+  {name:"MyLife",url:"https://www.mylife.com/ccpa/index.pubview",category:"People Search",difficulty:"Hard",notes:"Notoriously difficult. May need to call."},
+  {name:"PeopleFinder",url:"https://www.peoplefinder.com/optout.php",category:"People Search",difficulty:"Medium",notes:"Fax or mail removal. Old school."},
+  {name:"USSearch",url:"https://www.ussearch.com/opt-out/submit/",category:"People Search",difficulty:"Medium",notes:"Email confirmation required."},
+  {name:"Pipl",url:"https://pipl.com/personal-information-removal-request",category:"People Search",difficulty:"Hard",notes:"B2B service — removal requests may be slow."},
+  {name:"Acxiom",url:"https://isapps.acxiom.com/optout/optout.aspx",category:"Data Broker",difficulty:"Medium",notes:"Major marketing data broker. Multi-step form."},
+  {name:"Oracle Data Cloud",url:"https://www.oracle.com/legal/privacy/marketing-cloud-data-cloud-privacy-policy.html",category:"Data Broker",difficulty:"Hard",notes:"Email privacy@oracle.com. Slow process."},
+  {name:"Epsilon",url:"https://us.epsilon.com/privacy-policy",category:"Data Broker",difficulty:"Hard",notes:"Email optout@epsilon.com for removal."},
+  {name:"LexisNexis",url:"https://optout.lexisnexis.com/",category:"Data Broker",difficulty:"Hard",notes:"Requires documentation. Government-adjacent data."},
+  {name:"Equifax",url:"https://www.equifax.com/personal/credit-report-services/",category:"Credit Bureau",difficulty:"Medium",notes:"Freeze credit + opt out of pre-screened offers."},
+  {name:"Experian",url:"https://www.experian.com/privacy/opt-out",category:"Credit Bureau",difficulty:"Medium",notes:"Multiple opt-out options. Freeze recommended."},
+  {name:"TransUnion",url:"https://www.transunion.com/credit-freeze",category:"Credit Bureau",difficulty:"Medium",notes:"Freeze + opt out of marketing lists."},
+  {name:"Google Search Results",url:"https://support.google.com/websearch/answer/12719076",category:"Search Engine",difficulty:"Medium",notes:"Request removal of personal info from search results."},
+  {name:"Google Activity",url:"https://myactivity.google.com/",category:"Tech Platform",difficulty:"Easy",notes:"Delete search, location, YouTube history."},
+  {name:"Facebook Off-Platform",url:"https://www.facebook.com/off_facebook_activity",category:"Social Media",difficulty:"Easy",notes:"Clear and disconnect tracking from other sites."},
+  {name:"Twitter/X Data",url:"https://twitter.com/settings/your_twitter_data",category:"Social Media",difficulty:"Easy",notes:"Download data, review connected apps."},
+  {name:"LinkedIn Data",url:"https://www.linkedin.com/psettings/privacy",category:"Social Media",difficulty:"Easy",notes:"Visibility settings + data download."},
+  {name:"Amazon Data",url:"https://www.amazon.com/hz/privacy-central",category:"Tech Platform",difficulty:"Medium",notes:"Request data deletion. Review Alexa recordings."},
+  {name:"Zillow",url:"https://www.zillow.com/z/privacy/",category:"Property",difficulty:"Medium",notes:"Home value estimates expose your address."},
+  {name:"Realtor.com",url:"https://www.realtor.com/privacy-policy/",category:"Property",difficulty:"Medium",notes:"Property ownership records. Contact to delist."},
+  {name:"Voter Record Sites",url:"https://voterrecords.com/",category:"Public Records",difficulty:"Hard",notes:"Varies by state. Some states allow opt-out."},
+  {name:"Nuwber",url:"https://nuwber.com/removal/link",category:"People Search",difficulty:"Easy",notes:"Find listing, click remove. Verify email."},
+  {name:"Instant Checkmate",url:"https://www.instantcheckmate.com/opt-out/",category:"People Search",difficulty:"Medium",notes:"Owned by same company as TruthFinder."},
+];
+
+const EXPOSURE_CATEGORIES = [
+  {id:"address",label:"Home Address",icon:"🏠"},{id:"phone",label:"Phone Number",icon:"📱"},
+  {id:"email",label:"Email Address",icon:"📧"},{id:"dob",label:"Date of Birth",icon:"🎂"},
+  {id:"ssn",label:"SSN / Partial",icon:"🔐"},{id:"financial",label:"Financial Data",icon:"💳"},
+  {id:"relatives",label:"Relatives / Associates",icon:"👥"},{id:"employment",label:"Employment History",icon:"💼"},
+  {id:"property",label:"Property Records",icon:"🏡"},{id:"legal",label:"Court / Legal Records",icon:"⚖️"},
+  {id:"photos",label:"Photos / Images",icon:"📸"},{id:"social",label:"Social Media Profiles",icon:"🌐"},
+  {id:"passwords",label:"Leaked Passwords",icon:"🔑"},{id:"medical",label:"Medical / Health",icon:"🏥"},
+];
+
+const STATUSES = {
+  not_started:{label:"Not Started",color:"#6b7280"},
+  found:{label:"Found My Data",color:"#ef4444"},
+  requested:{label:"Removal Requested",color:"#f59e0b"},
+  confirmed:{label:"Removal Confirmed",color:"#22c55e"},
+  not_found:{label:"Not Listed",color:"#3b82f6"},
+  reappeared:{label:"Re-appeared",color:"#dc2626"},
+};
+
+const HARDENING_CHECKLIST = [
+  {id:"h1",text:"Freeze credit at all 3 bureaus (Equifax, Experian, TransUnion)"},
+  {id:"h2",text:"Enable 2FA on all email accounts"},
+  {id:"h3",text:"Enable 2FA on all financial accounts"},
+  {id:"h4",text:"Enable 2FA on all social media accounts"},
+  {id:"h5",text:"Use a password manager (1Password, Bitwarden, etc.)"},
+  {id:"h6",text:"Change reused passwords to unique ones"},
+  {id:"h7",text:"Check HaveIBeenPwned.com for email breaches"},
+  {id:"h8",text:"Opt out of pre-screened credit offers (optoutprescreen.com)"},
+  {id:"h9",text:"Register for National Do Not Call Registry"},
+  {id:"h10",text:"Set up Google Alerts for your full name"},
+  {id:"h11",text:"Review and tighten privacy settings on all social media"},
+  {id:"h12",text:"Remove old/unused accounts (use justdelete.me as reference)"},
+  {id:"h13",text:"Opt out of mail marketing lists (DMAchoice.org)"},
+  {id:"h14",text:"Review and revoke unnecessary app permissions on phone"},
+  {id:"h15",text:"Set up a dedicated email for opt-out requests"},
+  {id:"h16",text:"Review DNS / WHOIS for any domains you own — enable privacy"},
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function formatDate(d){if(!d)return"—";return new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+function daysBetween(d){if(!d)return null;return Math.floor((Date.now()-new Date(d).getTime())/864e5)}
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+
+function save(state){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.error("Save failed",e)}
+}
+
+function load(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw)return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+
+function getDefault(){
+  return {
+    entries:DATA_BROKERS.map(b=>({
+      id:uid(),name:b.name,url:b.url,category:b.category,difficulty:b.difficulty,
+      notes:b.notes,status:"not_started",exposedData:[],
+      dateChecked:null,dateRequested:null,dateConfirmed:null,recheckDate:null,
+      userNotes:"",isCustom:false
+    })),
+    scanLog:[],
+    checklist:{},
+    settings:{recheckDays:30,name:""}
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+let S = load() || getDefault();
+// Migrate old data missing fields
+S.entries.forEach(e=>{
+  if(e.exposedData===undefined)e.exposedData=[];
+  if(e.userNotes===undefined)e.userNotes="";
+  if(e.isCustom===undefined)e.isCustom=false;
+});
+if(!S.checklist)S.checklist={};
+if(!S.settings)S.settings={recheckDays:30,name:""};
+if(!S.scanLog)S.scanLog=[];
+
+let currentTab = "tracker";
+let filters = {search:"",status:"all",category:"all",difficulty:"all"};
+let editingNoteId = null;
+
+function addLog(text){
+  S.scanLog.unshift({id:uid(),text,date:new Date().toISOString()});
+  if(S.scanLog.length>200)S.scanLog.length=200;
+}
+
+function updateEntry(id,changes){
+  const e=S.entries.find(x=>x.id===id);
+  if(!e)return;
+  Object.assign(e,changes);
+  if(changes.status==="found"&&!e.dateChecked)e.dateChecked=new Date().toISOString();
+  if(changes.status==="requested")e.dateRequested=new Date().toISOString();
+  if(changes.status==="confirmed"){
+    e.dateConfirmed=new Date().toISOString();
+    const rc=new Date();rc.setDate(rc.getDate()+(S.settings.recheckDays||30));
+    e.recheckDate=rc.toISOString();
+  }
+  if(changes.status==="not_started"){e.dateChecked=null;e.dateRequested=null;e.dateConfirmed=null;e.recheckDate=null}
+  if(changes.status==="reappeared"){e.dateChecked=new Date().toISOString();e.dateConfirmed=null}
+  if(changes.status&&changes.status!=="not_started")addLog(`${e.name}: status → ${STATUSES[changes.status].label}`);
+  save(S);render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════
+function render(){
+  const entries=S.entries;
+  const counts={};
+  Object.keys(STATUSES).forEach(s=>{counts[s]=entries.filter(e=>e.status===s).length});
+  const totalExposures=entries.reduce((s,e)=>s+e.exposedData.length,0);
+  const recheckDue=entries.filter(e=>e.recheckDate&&new Date(e.recheckDate)<new Date()).length;
+  const completionRate=entries.length?Math.round(((counts.confirmed+counts.not_found)/entries.length)*100):0;
+  const categories=[...new Set(entries.map(e=>e.category))].sort();
+
+  const filtered=entries.filter(e=>{
+    if(filters.search&&!e.name.toLowerCase().includes(filters.search.toLowerCase()))return false;
+    if(filters.status!=="all"&&e.status!==filters.status)return false;
+    if(filters.category!=="all"&&e.category!==filters.category)return false;
+    if(filters.difficulty!=="all"&&e.difficulty!==filters.difficulty)return false;
+    return true;
+  });
+
+  let html=`
+  <div class="header">
+    <div class="header-left">
+      <h1>DATA EXPOSURE TRACKER</h1>
+      <p>${entries.length} sites tracked · ${S.settings.name?`Monitoring for: ${esc(S.settings.name)}`:"Set your name in settings"}</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openSettings()">⚙ Settings</button>
+      <button class="btn" onclick="exportData()">↓ Export</button>
+      <button class="btn" onclick="importData()">↑ Import</button>
+      <button class="btn btn-accent" onclick="openAddModal()">+ Add Site</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="label">Total Sites</div><div class="value">${entries.length}</div></div>
+    <div class="stat-card"><div class="label">Data Found</div><div class="value" style="color:var(--danger)">${counts.found+counts.requested+counts.reappeared}</div><div class="sub">${totalExposures} data points exposed</div></div>
+    <div class="stat-card"><div class="label">Removals Pending</div><div class="value" style="color:var(--warning)">${counts.requested}</div></div>
+    <div class="stat-card"><div class="label">Confirmed Clean</div><div class="value" style="color:var(--accent)">${counts.confirmed+counts.not_found}</div><div class="sub">${completionRate}% complete</div></div>
+    <div class="stat-card"><div class="label">Re-check Due</div><div class="value" style="color:${recheckDue>0?"var(--warning)":"var(--text-muted)"}">${recheckDue}</div><div class="sub">${S.settings.recheckDays||30} day cycle</div></div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-meta"><span>Overall Progress</span><span>${completionRate}%</span></div>
+    <div class="progress-bg"><div class="progress-fill" style="width:${completionRate}%;background:${completionRate===100?"var(--accent)":"linear-gradient(90deg,var(--accent),var(--warning))"}"></div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab ${currentTab==="tracker"?"active":""}" onclick="switchTab('tracker')">Tracker</button>
+    <button class="tab ${currentTab==="recheck"?"active":""}" onclick="switchTab('recheck')">Re-checks${recheckDue>0?`<span class="tab-badge">${recheckDue}</span>`:""}</button>
+    <button class="tab ${currentTab==="hardening"?"active":""}" onclick="switchTab('hardening')">Hardening Checklist</button>
+    <button class="tab ${currentTab==="log"?"active":""}" onclick="switchTab('log')">Activity Log</button>
+  </div>`;
+
+  // ── TRACKER TAB ──
+  if(currentTab==="tracker"){
+    html+=`
+    <div class="filters">
+      <input class="search-input" placeholder="Search sites..." value="${esc(filters.search)}" oninput="filters.search=this.value;render()">
+      <select onchange="filters.status=this.value;render()">
+        <option value="all" ${filters.status==="all"?"selected":""}>All Statuses</option>
+        ${Object.entries(STATUSES).map(([k,v])=>`<option value="${k}" ${filters.status===k?"selected":""}>${v.label}</option>`).join("")}
+      </select>
+      <select onchange="filters.category=this.value;render()">
+        <option value="all" ${filters.category==="all"?"selected":""}>All Categories</option>
+        ${categories.map(c=>`<option ${filters.category===c?"selected":""}>${esc(c)}</option>`).join("")}
+      </select>
+      <select onchange="filters.difficulty=this.value;render()">
+        <option value="all" ${filters.difficulty==="all"?"selected":""}>All Difficulties</option>
+        <option ${filters.difficulty==="Easy"?"selected":""}>Easy</option>
+        <option ${filters.difficulty==="Medium"?"selected":""}>Medium</option>
+        <option ${filters.difficulty==="Hard"?"selected":""}>Hard</option>
+      </select>
+      <span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${filtered.length} shown</span>
+    </div>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Site</th><th>Status</th><th>Exposed Data</th><th>Dates</th><th>Notes</th><th style="width:40px"></th>
+    </tr></thead><tbody>`;
+
+    if(filtered.length===0){
+      html+=`<tr><td colspan="6" class="empty-state">No entries match your filters</td></tr>`;
+    }
+
+    filtered.forEach(e=>{
+      const statusColor=STATUSES[e.status]?.color||"#6b7280";
+      html+=`<tr>
+        <td>
+          <div class="site-name">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name)}</div>
+          <div style="margin-top:4px"><span class="cat-tag">${esc(e.category)}</span> <span class="difficulty-tag diff-${e.difficulty.toLowerCase()}">${e.difficulty}</span></div>
+        </td>
+        <td>
+          <select class="status-select" style="border-left:3px solid ${statusColor}" onchange="updateEntry('${e.id}',{status:this.value})">
+            ${Object.entries(STATUSES).map(([k,v])=>`<option value="${k}" ${e.status===k?"selected":""}>${v.label}</option>`).join("")}
+          </select>
+        </td>
+        <td>
+          <div class="exposure-tags">
+            ${EXPOSURE_CATEGORIES.map(c=>`<span class="exposure-tag ${e.exposedData.includes(c.id)?"active":""}" onclick="toggleExposure('${e.id}','${c.id}')" title="${c.label}">${c.icon}</span>`).join("")}
+          </div>
+        </td>
+        <td class="date-cell">
+          ${e.dateChecked?`<div>Checked: ${formatDate(e.dateChecked)}</div>`:""}
+          ${e.dateRequested?`<div>Requested: ${formatDate(e.dateRequested)}</div>`:""}
+          ${e.dateConfirmed?`<div>Confirmed: ${formatDate(e.dateConfirmed)}</div>`:""}
+          ${e.recheckDate?`<div class="${new Date(e.recheckDate)<new Date()?"recheck-overdue":""}">Recheck: ${formatDate(e.recheckDate)}${new Date(e.recheckDate)<new Date()?" ⚠ OVERDUE":""}</div>`:""}
+          ${!e.dateChecked?`<div style="color:var(--text-muted)">Not checked yet</div>`:""}
+        </td>
+        <td class="note-cell">
+          ${e.notes?`<div class="note-default">${esc(e.notes)}</div>`:""}
+          ${editingNoteId===e.id
+            ?`<textarea class="note-input" id="note-${e.id}" onblur="saveNote('${e.id}')" placeholder="Your notes...">${esc(e.userNotes)}</textarea>`
+            :`<div style="font-size:12px;color:${e.userNotes?"var(--text-secondary)":"var(--text-muted)"};cursor:pointer;margin-top:${e.notes?4:0}px" onclick="startEditNote('${e.id}')">${e.userNotes?esc(e.userNotes):"+ add note"}</div>`
+          }
+        </td>
+        <td>${e.isCustom?`<button class="btn btn-sm btn-danger" onclick="removeEntry('${e.id}')" title="Remove">×</button>`:""}</td>
+      </tr>`;
+    });
+
+    html+=`</tbody></table></div>`;
+  }
+
+  // ── RECHECK TAB ──
+  if(currentTab==="recheck"){
+    const recheckEntries=entries.filter(e=>e.recheckDate).sort((a,b)=>new Date(a.recheckDate)-new Date(b.recheckDate));
+    if(recheckEntries.length===0){
+      html+=`<div class="empty-state">No re-checks scheduled yet. Sites move here after you confirm their removal.</div>`;
+    }else{
+      html+=`<div class="table-wrap"><table><thead><tr><th>Site</th><th>Originally Confirmed</th><th>Re-check Due</th><th>Status</th><th>Action</th></tr></thead><tbody>`;
+      recheckEntries.forEach(e=>{
+        const overdue=new Date(e.recheckDate)<new Date();
+        const daysUntil=daysBetween(e.recheckDate)*-1;
+        html+=`<tr>
+          <td><div class="site-name">${e.url?`<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`:esc(e.name)}</div></td>
+          <td class="date-cell">${formatDate(e.dateConfirmed)}</td>
+          <td class="date-cell ${overdue?"recheck-overdue":""}">${formatDate(e.recheckDate)}${overdue?` (${Math.abs(daysUntil)}d overdue)`:` (in ${daysUntil}d)`}</td>
+          <td><span style="color:${STATUSES[e.status]?.color||"#6b7280"}">${STATUSES[e.status]?.label||e.status}</span></td>
+          <td style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-accent" onclick="markStillClean('${e.id}')">Still Clean</button>
+            <button class="btn btn-sm btn-danger" onclick="updateEntry('${e.id}',{status:'reappeared'})">Re-appeared</button>
+          </td>
+        </tr>`;
+      });
+      html+=`</tbody></table></div>`;
+    }
+  }
+
+  // ── HARDENING TAB ──
+  if(currentTab==="hardening"){
+    const done=HARDENING_CHECKLIST.filter(c=>S.checklist[c.id]).length;
+    html+=`
+    <div class="progress-wrap">
+      <div class="progress-meta"><span>Hardening Progress</span><span>${done}/${HARDENING_CHECKLIST.length}</span></div>
+      <div class="progress-bg"><div class="progress-fill" style="width:${(done/HARDENING_CHECKLIST.length)*100}%;background:var(--accent)"></div></div>
+    </div>
+    <div class="checklist-section"><h3>Security Hardening Steps</h3>`;
+    HARDENING_CHECKLIST.forEach(c=>{
+      const checked=S.checklist[c.id];
+      html+=`<div class="checklist-item">
+        <div class="check-box ${checked?"checked":""}" onclick="toggleCheck('${c.id}')">${checked?"✓":""}</div>
+        <div class="checklist-text ${checked?"done":""}">${esc(c.text)}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // ── LOG TAB ──
+  if(currentTab==="log"){
+    if(!S.scanLog.length){
+      html+=`<div class="empty-state">No activity yet. Start updating site statuses to see your log.</div>`;
+    }else{
+      html+=`<div class="log-list">`;
+      S.scanLog.forEach(l=>{
+        html+=`<div class="log-entry"><span class="log-text">${esc(l.text)}</span><span class="log-date">${formatDate(l.date)}</span></div>`;
+      });
+      html+=`</div>`;
+    }
+  }
+
+  // ── FOOTER ──
+  html+=`
+  <div class="export-section">
+    <h3>Data Management</h3>
+    <p>All data is stored in your browser's localStorage. Export regularly as backup.</p>
+    <div class="export-btns">
+      <button class="btn" onclick="exportData()">↓ Export JSON Backup</button>
+      <button class="btn" onclick="importData()">↑ Import Backup</button>
+      <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
+    </div>
+  </div>`;
+
+  document.getElementById("app").innerHTML=html;
+
+  // Auto-focus note textarea
+  if(editingNoteId){
+    const ta=document.getElementById("note-"+editingNoteId);
+    if(ta){ta.focus();ta.selectionStart=ta.value.length}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════════════════
+function switchTab(t){currentTab=t;render()}
+
+function toggleExposure(entryId,dataType){
+  const e=S.entries.find(x=>x.id===entryId);
+  if(!e)return;
+  const i=e.exposedData.indexOf(dataType);
+  if(i>=0)e.exposedData.splice(i,1);else e.exposedData.push(dataType);
+  save(S);render();
+}
+
+function startEditNote(id){editingNoteId=id;render()}
+function saveNote(id){
+  const ta=document.getElementById("note-"+id);
+  if(ta){
+    const e=S.entries.find(x=>x.id===id);
+    if(e)e.userNotes=ta.value;
+  }
+  editingNoteId=null;save(S);render();
+}
+
+function markStillClean(id){
+  const e=S.entries.find(x=>x.id===id);if(!e)return;
+  const rc=new Date();rc.setDate(rc.getDate()+(S.settings.recheckDays||30));
+  e.status="confirmed";e.dateConfirmed=new Date().toISOString();e.recheckDate=rc.toISOString();
+  addLog(`${e.name}: re-checked — still clean`);
+  save(S);render();
+}
+
+function removeEntry(id){
+  const e=S.entries.find(x=>x.id===id);
+  if(!e||!confirm(`Remove "${e.name}" from tracking?`))return;
+  S.entries=S.entries.filter(x=>x.id!==id);
+  addLog(`Removed: ${e.name}`);
+  save(S);render();
+}
+
+function toggleCheck(id){
+  S.checklist[id]=!S.checklist[id];
+  save(S);render();
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;
+  a.download=`exposure-tracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);
+}
+
+function importData(){
+  const inp=document.createElement("input");inp.type="file";inp.accept=".json";
+  inp.onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{
+      const txt=await f.text();const d=JSON.parse(txt);
+      if(d.entries){S=d;if(!S.checklist)S.checklist={};if(!S.scanLog)S.scanLog=[];if(!S.settings)S.settings={recheckDays:30,name:""};save(S);render()}
+    }catch{alert("Invalid backup file")}
+  };inp.click();
+}
+
+function resetAll(){
+  if(!confirm("This will reset ALL data. Are you sure?"))return;
+  S=getDefault();save(S);render();
+}
+
+// ── MODALS ──
+function openAddModal(){
+  const overlay=document.createElement("div");
+  overlay.className="modal-overlay";
+  overlay.id="modal-add";
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.innerHTML=`
+  <div class="modal">
+    <h3>Add Custom Site</h3>
+    <div class="form-group"><label>Site Name *</label><input id="add-name" placeholder="e.g. SomeDataBroker.com"></div>
+    <div class="form-group"><label>Opt-Out URL</label><input id="add-url" placeholder="https://..."></div>
+    <div class="form-group"><label>Category</label><select id="add-cat">
+      ${["People Search","Data Broker","Credit Bureau","Search Engine","Social Media","Tech Platform","Property","Public Records","Other"].map(c=>`<option>${c}</option>`).join("")}
+    </select></div>
+    <div class="form-group"><label>Difficulty</label><select id="add-diff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></div>
+    <div class="form-group"><label>Notes</label><textarea id="add-notes" placeholder="Opt-out instructions, tips..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('modal-add').remove()">Cancel</button>
+      <button class="btn btn-accent" onclick="submitAdd()">Add Site</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function submitAdd(){
+  const name=document.getElementById("add-name").value.trim();
+  if(!name){alert("Name is required");return}
+  S.entries.push({
+    id:uid(),name,
+    url:document.getElementById("add-url").value.trim(),
+    category:document.getElementById("add-cat").value,
+    difficulty:document.getElementById("add-diff").value,
+    notes:document.getElementById("add-notes").value.trim(),
+    status:"not_started",exposedData:[],
+    dateChecked:null,dateRequested:null,dateConfirmed:null,recheckDate:null,
+    userNotes:"",isCustom:true
+  });
+  addLog(`Added custom site: ${name}`);
+  save(S);
+  document.getElementById("modal-add").remove();
+  render();
+}
+
+function openSettings(){
+  const overlay=document.createElement("div");
+  overlay.className="modal-overlay";
+  overlay.id="modal-settings";
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.innerHTML=`
+  <div class="modal">
+    <h3>Settings</h3>
+    <div class="form-group"><label>Your Name (for search reference)</label><input id="set-name" value="${esc(S.settings.name)}" placeholder="Used only locally for your reference"></div>
+    <div class="form-group"><label>Re-check Interval (days)</label><input type="number" id="set-days" min="7" max="180" value="${S.settings.recheckDays||30}"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('modal-settings').remove()">Cancel</button>
+      <button class="btn btn-accent" onclick="submitSettings()">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+function submitSettings(){
+  S.settings.name=document.getElementById("set-name").value.trim();
+  S.settings.recheckDays=parseInt(document.getElementById("set-days").value)||30;
+  save(S);
+  document.getElementById("modal-settings").remove();
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
